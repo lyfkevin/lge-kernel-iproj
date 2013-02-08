@@ -1,0 +1,91 @@
+From f5834d222a443e37fa8f4c099acc97688c201672 Mon Sep 17 00:00:00 2001
+From: Siddhartha Agrawal <agrawals@codeaurora.org>
+Date: Mon, 19 Nov 2012 19:37:12 -0800
+Subject: [PATCH] msm_fb: display: Send current timestamp in case of timeout
+
+On timeout while waiting for the vsync, send the current
+timestamp to the userspace. This resolves the infinite
+wait seen during the bootup.
+
+Signed-off-by: Siddhartha Agrawal <agrawals@codeaurora.org>
+Change-Id: I0d7b8750becfbb4e5c5e47b29ded6395627e8862
+---
+ drivers/video/msm/mdp4_overlay_dsi_cmd.c   |    5 ++++-
+ drivers/video/msm/mdp4_overlay_dsi_video.c |    7 ++++---
+ drivers/video/msm/mdp4_overlay_dtv.c       |    5 ++++-
+ drivers/video/msm/mdp4_overlay_lcdc.c      |    5 ++++-
+ 4 files changed, 16 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/video/msm/mdp4_overlay_dsi_cmd.c b/drivers/video/msm/mdp4_overlay_dsi_cmd.c
+index 3464ab3..90dd5d2 100644
+--- a/drivers/video/msm/mdp4_overlay_dsi_cmd.c
++++ b/drivers/video/msm/mdp4_overlay_dsi_cmd.c
+@@ -685,7 +685,10 @@ static ssize_t vsync_show_event(struct device *dev,
+ 		msecs_to_jiffies(VSYNC_PERIOD * 4));
+ 	if (ret <= 0) {
+ 		vctrl->wait_vsync_cnt = 0;
+-		return -EBUSY;
++		vsync_tick = ktime_to_ns(ktime_get());
++		ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu", vsync_tick);
++		buf[strlen(buf) + 1] = '\0';
++		return ret;
+ 	}
+ 
+ 	spin_lock_irqsave(&vctrl->spin_lock, flags);
+diff --git a/drivers/video/msm/mdp4_overlay_dsi_video.c b/drivers/video/msm/mdp4_overlay_dsi_video.c
+index b505d74..e5df3a6 100644
+--- a/drivers/video/msm/mdp4_overlay_dsi_video.c
++++ b/drivers/video/msm/mdp4_overlay_dsi_video.c
+@@ -406,13 +406,14 @@ static ssize_t vsync_show_event(struct device *dev,
+ 		msecs_to_jiffies(VSYNC_PERIOD * 4));
+ 	if (ret <= 0) {
+ 		vctrl->wait_vsync_cnt = 0;
+-		return -EBUSY;
++		vsync_tick = ktime_to_ns(ktime_get());
++		ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu", vsync_tick);
++		buf[strlen(buf) + 1] = '\0';
++		return ret;
+ 	}
+ 
+ 	spin_lock_irqsave(&vctrl->spin_lock, flags);
+ 	vsync_tick = ktime_to_ns(vctrl->vsync_time);
+-	if (!vsync_tick)
+-		vsync_tick = ktime_to_ns(ktime_get());
+ 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
+ 
+ 	ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu", vsync_tick);
+diff --git a/drivers/video/msm/mdp4_overlay_dtv.c b/drivers/video/msm/mdp4_overlay_dtv.c
+index c5e6822..1e3ef57 100644
+--- a/drivers/video/msm/mdp4_overlay_dtv.c
++++ b/drivers/video/msm/mdp4_overlay_dtv.c
+@@ -342,7 +342,10 @@ static ssize_t vsync_show_event(struct device *dev,
+ 		msecs_to_jiffies(VSYNC_PERIOD * 4));
+ 	if (ret <= 0) {
+ 		vctrl->wait_vsync_cnt = 0;
+-		return -EBUSY;
++		vsync_tick = ktime_to_ns(ktime_get());
++		ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu", vsync_tick);
++		buf[strlen(buf) + 1] = '\0';
++		return ret;
+ 	}
+ 
+ 	spin_lock_irqsave(&vctrl->spin_lock, flags);
+diff --git a/drivers/video/msm/mdp4_overlay_lcdc.c b/drivers/video/msm/mdp4_overlay_lcdc.c
+index 84e3495..0ff712d 100644
+--- a/drivers/video/msm/mdp4_overlay_lcdc.c
++++ b/drivers/video/msm/mdp4_overlay_lcdc.c
+@@ -384,7 +384,10 @@ static ssize_t vsync_show_event(struct device *dev,
+ 		msecs_to_jiffies(VSYNC_PERIOD * 4));
+ 	if (ret <= 0) {
+ 		vctrl->wait_vsync_cnt = 0;
+-		return -EBUSY;
++		vsync_tick = ktime_to_ns(ktime_get());
++		ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu", vsync_tick);
++		buf[strlen(buf) + 1] = '\0';
++		return ret;
+ 	}
+ 
+ 	spin_lock_irqsave(&vctrl->spin_lock, flags);
+-- 
+1.7.10
+
