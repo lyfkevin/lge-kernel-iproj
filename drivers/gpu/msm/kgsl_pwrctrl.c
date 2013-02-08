@@ -30,6 +30,10 @@
 #define UPDATE_BUSY_VAL		1000000
 #define UPDATE_BUSY		50
 
+#ifdef CONFIG_SEC_LIMIT_MAX_FREQ
+#define LMF_BROWSER_THRESHOLD  500000
+#endif
+
 struct clk_pair {
 	const char *name;
 	uint map;
@@ -397,17 +401,37 @@ static void update_statistics(struct kgsl_device *device)
 	clkstats->elapsed = 0;
 }
 
+#ifdef CONFIG_SEC_LIMIT_MAX_FREQ
+extern int lmf_browser_state;
+#endif
+
 /* Track the amount of time the gpu is on vs the total system time. *
  * Regularly update the percentage of busy time displayed by sysfs. */
 static void kgsl_pwrctrl_busy_time(struct kgsl_device *device, bool on_time)
 {
 	struct kgsl_clk_stats *clkstats = &device->pwrctrl.clk_stats;
+	#ifdef CONFIG_SEC_LIMIT_MAX_FREQ
+		struct kgsl_pwrctrl *pwr;
+	#endif
+
 	update_clk_statistics(device, on_time);
 	/* Update the output regularly and reset the counters. */
 	if ((clkstats->elapsed > UPDATE_BUSY_VAL) ||
 		!test_bit(KGSL_PWRFLAGS_AXI_ON, &device->pwrctrl.power_flags)) {
 		update_statistics(device);
 	}
+	
+#ifdef CONFIG_SEC_LIMIT_MAX_FREQ
+	pwr = &device->pwrctrl;
+	if (device->id == 0 &&
+		device->state == KGSL_STATE_ACTIVE &&
+		pwr->active_pwrlevel == KGSL_PWRLEVEL_TURBO) {
+		if (clkstats->on_time_old > LMF_BROWSER_THRESHOLD)
+			lmf_browser_state = false;
+		else
+			 lmf_browser_state = true;
+	}
+#endif
 }
 
 void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
@@ -575,6 +599,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	}
 	pwr->num_pwrlevels = pdata->num_levels;
 	pwr->active_pwrlevel = pdata->init_level;
+	pwr->thermal_pwrlevel = pdata->max_level;
 	pwr->default_pwrlevel = pdata->init_level;
 	for (i = 0; i < pdata->num_levels; i++) {
 		pwr->pwrlevels[i].gpu_freq =
