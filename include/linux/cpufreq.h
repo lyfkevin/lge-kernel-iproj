@@ -24,6 +24,7 @@
 
 #define CPUFREQ_NAME_LEN 16
 
+extern uint32_t acpu_check_khz_value(unsigned long khz);
 
 /*********************************************************************
  *                     CPUFREQ NOTIFIER INTERFACE                    *
