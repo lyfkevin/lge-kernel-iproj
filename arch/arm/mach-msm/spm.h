@@ -108,11 +108,6 @@ struct msm_spm_platform_data {
 int msm_spm_set_low_power_mode(unsigned int mode, bool notify_rpm);
 int msm_spm_set_vdd(unsigned int cpu, unsigned int vlevel);
 void msm_spm_reinit(void);
-<<<<<<< HEAD
-=======
-void msm_spm_allow_x_cpu_set_vdd(bool allowed);
-int get_msm_spm_set_vdd_x_cpu_allowed(void);
->>>>>>> 23d74e2... msm8x60: Fix crash when bringing up cpu1 from userspace.
 int msm_spm_init(struct msm_spm_platform_data *data, int nr_devs);
 int msm_spm_turn_on_cpu_rail(unsigned int cpu);
 
