@@ -190,6 +190,18 @@ int msm_spm_set_vdd(unsigned int cpu, unsigned int vlevel)
 	struct msm_spm_device *dev;
 	uint32_t timeout_us;
 
+<<<<<<< HEAD
+=======
+	local_irq_save(flags);
+
+	if (!atomic_read(&msm_spm_set_vdd_x_cpu_allowed) &&
+				unlikely(smp_processor_id() != cpu)) {
+		pr_err("%s: attempting to set vdd of cpu %u from "
+			"cpu %u\n", __func__, cpu, smp_processor_id());
+		goto set_vdd_x_cpu_bail;
+	}
+
+>>>>>>> 23d74e2... msm8x60: Fix crash when bringing up cpu1 from userspace.
 	dev = &per_cpu(msm_spm_devices, cpu);
 
 	if (msm_spm_debug_mask & MSM_SPM_DEBUG_VCTL)
@@ -247,6 +259,19 @@ void msm_spm_reinit(void)
 	mb();
 }
 
+<<<<<<< HEAD
+=======
+void msm_spm_allow_x_cpu_set_vdd(bool allowed)
+{
+	atomic_set(&msm_spm_set_vdd_x_cpu_allowed, allowed ? 1 : 0);
+}
+
+int get_msm_spm_set_vdd_x_cpu_allowed(void)
+{
+	return (atomic_read(&msm_spm_set_vdd_x_cpu_allowed) != 0);
+}
+
+>>>>>>> 23d74e2... msm8x60: Fix crash when bringing up cpu1 from userspace.
 int __init msm_spm_init(struct msm_spm_platform_data *data, int nr_devs)
 {
 	unsigned int cpu;
