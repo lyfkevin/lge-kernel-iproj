@@ -3864,12 +3864,10 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 
 #ifdef PKT_FILTER_SUPPORT
 	/* Setup defintions for pktfilter , enable in suspend */
-	dhd->pktfilter_count = 4;
-	/* Setup filter to allow only unicast */
+	dhd->pktfilter_count = 1;
+	/* Setup filter to allow unicast only */
 	dhd->pktfilter[0] = "100 0 0 0 0x01 0x00";
-	dhd->pktfilter[1] = NULL;
-	dhd->pktfilter[2] = NULL;
-	dhd->pktfilter[3] = NULL;
+
 #if defined(SOFTAP)
 	if (ap_fw_loaded) {
 		int i;
