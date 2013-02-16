@@ -546,6 +546,19 @@ static struct attribute_group vsync_fs_attr_group = {
 	.attrs = vsync_fs_attrs,
 };
 
+int mdp4_dsi_video_splash_done(void)
+{
+	struct vsycn_ctrl *vctrl;
+	int cndx = 0;
+
+	vctrl = &vsync_ctrl_db[cndx];
+
+	mdp4_dsi_video_tg_off(vctrl);
+	mipi_dsi_controller_cfg(0);
+
+	return 0;
+}
+
 int mdp4_dsi_video_on(struct platform_device *pdev)
 {
 	int dsi_width;
@@ -641,12 +654,6 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	}
 
 	atomic_set(&vctrl->suspend, 0);
-
-	if (!(mfd->cont_splash_done)) {
-		mfd->cont_splash_done = 1;
-		mdp4_dsi_video_tg_off(vctrl);
-		mipi_dsi_controller_cfg(0);
-	}
 
 	pipe->src_height = fbi->var.yres;
 	pipe->src_width = fbi->var.xres;
