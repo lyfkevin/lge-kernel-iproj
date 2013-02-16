@@ -1,0 +1,11 @@
+--- arch/arm/configs/shooter_defconfig
++++ arch/arm/configs/shooter_defconfig
+@@ -35,7 +35,7 @@
+ CONFIG_EXPERIMENTAL=y
+ CONFIG_INIT_ENV_ARG_LIMIT=32
+ CONFIG_CROSS_COMPILE=""
+-CONFIG_LOCALVERSION="-MAC-v3.6"
++CONFIG_LOCALVERSION="-MAC-v3.7"
+ # CONFIG_LOCALVERSION_AUTO is not set
+ CONFIG_HAVE_KERNEL_GZIP=y
+ CONFIG_HAVE_KERNEL_LZMA=y
