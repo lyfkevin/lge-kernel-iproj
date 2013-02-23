@@ -42,6 +42,8 @@
 #include <linux/ethtool.h>
 #include <linux/fcntl.h>
 #include <linux/fs.h>
+#include <linux/moduleparam.h>
+#include <linux/module.h>
 
 #include <asm/uaccess.h>
 #include <asm/unaligned.h>
@@ -575,12 +577,16 @@ static void dhd_set_packet_filter(int value, dhd_pub_t *dhd)
 #endif
 }
 
+bool wifi_pm = false;
+module_param(wifi_pm, bool, 0755);
+EXPORT_SYMBOL(wifi_pm);
+
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 {
 
 //bill.jung@lge.com - Don't set up filter and Power save mode
-#if 0
+#if 1
 	int power_mode = PM_MAX;
 #endif
 //bill.jung@lge.com - Don't set up filter and Power save mode
@@ -593,6 +599,11 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 	DHD_TRACE(("%s: enter, value = %d in_suspend=%d\n",
 		__FUNCTION__, value, dhd->in_suspend));
 
+	if (wifi_pm) {
+		power_mode = PM_FAST;
+		pr_info("%p Wi-Fi Power Management policy changed to PM_FAST.", __func__);
+	}
+
 	if (dhd && dhd->up) {
 		if (value && dhd->in_suspend) {
 
@@ -600,7 +611,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 				DHD_ERROR(("%s: force extra Suspend setting \n", __FUNCTION__));
 				
 //bill.jung@lge.com - Don't set up filter and Power save mode
-#if 0
+#if 1
 				dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode,
 				                 sizeof(power_mode), TRUE, 0);
 
@@ -628,7 +639,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 				DHD_TRACE(("%s: Remove extra suspend setting \n", __FUNCTION__));
 				
 //bill.jung@lge.com - Don't set up filter and Power save mode
-#if 0
+#if 1
 				power_mode = PM_FAST;
 				dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode,
 				                 sizeof(power_mode), TRUE, 0);
