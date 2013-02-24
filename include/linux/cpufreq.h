@@ -27,6 +27,11 @@
 extern uint32_t acpu_check_khz_value(unsigned long khz);
 ssize_t set_scaling_max(unsigned int new_max, int cpu);
 
+#ifdef CONFIG_CPU_FREQ_GOV_BADASS_GPU_CONTROL
+/* Badass gpu state detection */
+extern bool gpu_busy_state;
+#endif
+
 /*********************************************************************
  *                     CPUFREQ NOTIFIER INTERFACE                    *
  *********************************************************************/
@@ -372,6 +377,9 @@ extern struct cpufreq_governor cpufreq_gov_interactive;
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_INTELLIDEMAND)
 extern struct cpufreq_governor cpufreq_gov_intellidemand;
 #define CPUFREQ_DEFAULT_GOVERNOR        (&cpufreq_gov_intellidemand)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_BADASS)
+extern struct cpufreq_governor cpufreq_gov_badass;
+#define CPUFREQ_DEFAULT_GOVERNOR  (&cpufreq_gov_badass)
 #endif
 
 

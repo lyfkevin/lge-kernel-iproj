@@ -124,6 +124,12 @@
 int id_set_two_phase_freq(int cpufreq);
 #endif
 
+#ifdef CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE
+int set_two_phase_freq_badass(int cpufreq);
+#endif
+#ifdef CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE
+int set_three_phase_freq_badass(int cpufreq);
+#endif
 
 #if 0 /* moved following macros into devices_i_skt.h */
 /* Macros assume PMIC GPIOs start at 0 */
@@ -6391,6 +6397,14 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 #ifdef CONFIG_CPU_FREQ_GOV_INTELLIDEMAND_2_PHASE
 	id_set_two_phase_freq(1134000);
 #endif
+
+#ifdef CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE
+	set_two_phase_freq_badass(CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE_FREQ);
+#endif
+#ifdef CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE
+	set_three_phase_freq_badass(CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE_FREQ);
+#endif
+
 	msm8x60_init_tlmm();
 	msm8x60_init_gpiomux(board_data->gpiomux_cfgs);
 	msm8x60_init_uart12dm();
