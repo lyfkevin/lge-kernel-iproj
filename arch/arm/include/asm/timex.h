@@ -14,11 +14,10 @@
 
 #include <mach/timex.h>
 
-typedef unsigned long cycles_t;
+#ifdef ARCH_HAS_READ_CURRENT_TIMER
+#define get_cycles()	({ cycles_t c; read_current_timer(&c) ? 0 : c; })
+#endif
 
-static inline cycles_t get_cycles (void)
-{
-	return 0;
-}
+#include <asm-generic/timex.h>
 
 #endif

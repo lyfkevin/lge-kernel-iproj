@@ -19,6 +19,7 @@
 #include <asm/cacheflush.h>
 #include <asm/cputype.h>
 #include <asm/mach-types.h>
+#include <asm/smp_plat.h>
 
 #include <mach/socinfo.h>
 #include <mach/smp.h>
@@ -29,7 +30,20 @@
 #include "scm-boot.h"
 #include "spm.h"
 
-int pen_release = -1;
+volatile int pen_release = -1;
+
+/*
+ * Write pen_release in a way that is guaranteed to be visible to all
+ * observers, irrespective of whether they're taking part in coherency
+ * or not.  This is necessary for the hotplug code to work reliably.
+ */
+static void __cpuinit write_pen_release(int val)
+{
+	pen_release = val;
+	smp_wmb();
+	__cpuc_flush_dcache_area((void *)&pen_release, sizeof(pen_release));
+	outer_clean_range(__pa(&pen_release), __pa(&pen_release + 1));
+}
 
 /* Initialize the present map (cpu_set(i, cpu_present_map)). */
 void __init platform_smp_prepare_cpus(unsigned int max_cpus)
@@ -170,20 +184,14 @@ int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 		per_cpu(cold_boot_done, cpu) = true;
 	}
 
-	pen_release = cpu;
-	dmac_flush_range((void *)&pen_release,
-			 (void *)(&pen_release + sizeof(pen_release)));
-	__asm__("sev");
-	mb();
+	write_pen_release(cpu_logical_map(cpu));
 
 	/* Use smp_cross_call() to send a soft interrupt to wake up
 	 * the other core.
 	 */
-	gic_raise_softirq(cpumask_of(cpu), 1);
+	gic_raise_softirq(cpumask_of(cpu), 0);
 
 	while (pen_release != 0xFFFFFFFF) {
-		dmac_inv_range((void *)&pen_release,
-			       (void *)(&pen_release+sizeof(pen_release)));
 		usleep(500);
 		if (cnt++ >= 10)
 			break;
@@ -213,4 +221,9 @@ void __cpuinit platform_secondary_init(unsigned int cpu)
 		writel(0x0000FFFF, MSM_QGIC_DIST_BASE + GIC_DIST_ENABLE_SET);
 
 	gic_secondary_init(0);
+	/*
+	 * let the primary processor know we're out of the
+	 * pen, then head off into the C entry point
+	 */
+	write_pen_release(-1);
 }
