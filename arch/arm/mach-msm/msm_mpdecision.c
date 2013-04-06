@@ -38,8 +38,8 @@
 #define DEBUG 0
 
 #define MPDEC_TAG                       "[MPDEC]: "
-#define MSM_MPDEC_STARTDELAY            20000
-#define MSM_MPDEC_DELAY                 100
+#define MSM_MPDEC_STARTDELAY            40000
+#define MSM_MPDEC_DELAY                 500
 #define MSM_MPDEC_PAUSE                 10000
 #define MSM_MPDEC_IDLE_FREQ             486000
 
@@ -80,8 +80,8 @@ static struct msm_mpdec_tuners {
         .min_cpus = 1,
 };
 
-static unsigned int NwNs_Threshold[8] = {12, 0, 25, 20, 32, 28, 0, 35};
-static unsigned int TwTs_Threshold[8] = {140, 0, 140, 190, 140, 190, 0, 190};
+static unsigned int NwNs_Threshold[8] = {20, 5, 25, 20, 32, 28, 0, 35};
+static unsigned int TwTs_Threshold[8] = {250, 0, 140, 190, 140, 190, 0, 190};
 
 extern unsigned int get_rq_info(void);
 extern unsigned long acpuclk_get_rate(int);
