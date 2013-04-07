@@ -395,6 +395,7 @@ static __used bool wl_is_ibssstarter(struct wl_priv *wl);
  */
 static s32 __wl_cfg80211_up(struct wl_priv *wl);
 static s32 __wl_cfg80211_down(struct wl_priv *wl);
+static s32 wl_add_remove_eventmsg(struct net_device *ndev, u16 event, bool add);
 static bool wl_is_linkdown(struct wl_priv *wl, const wl_event_msg_t *e);
 static bool wl_is_linkup(struct wl_priv *wl, const wl_event_msg_t *e, struct net_device *ndev);
 static bool wl_is_nonetwork(struct wl_priv *wl, const wl_event_msg_t *e);
@@ -3709,13 +3710,12 @@ wl_cfg80211_remain_on_channel(struct wiphy *wiphy, struct net_device *dev,
 	cfg80211_ready_on_channel(dev, *cookie, channel,
 		channel_type, duration, GFP_KERNEL);
 	if (!p2p_is_on(wl)) {
-	/* If wl_cfgp2p_supported() fails, wl->p2p will be NULL */
-	if (!wl->p2p) {
-		printk(KERN_ERR "%s: p2p not initialized\n", __func__);
-		err = -EINVAL;
-		goto exit;
-
-	}
+		/* If wl_cfgp2p_supported() fails, wl->p2p will be NULL */
+		if (!wl->p2p) {
+			printk(KERN_ERR "%s: p2p not initialized\n", __func__);
+			err = -EINVAL;
+			goto exit;
+		}
 #ifdef P2P_PATCH
 		wl_cfgp2p_set_firm_p2p(wl); //LGE_CHANGE real-wifi@lge.com by yangseon.so,20120314,p2p device address issue 
 #endif
@@ -7056,7 +7056,7 @@ static s32 wl_config_ifmode(struct wl_priv *wl, struct net_device *ndev, s32 ift
 	return 0;
 }
 
-s32 wl_add_remove_eventmsg(struct net_device *ndev, u16 event, bool add)
+static s32 wl_add_remove_eventmsg(struct net_device *ndev, u16 event, bool add)
 {
 	s8 iovbuf[WL_EVENTING_MASK_LEN + 12];
 
