@@ -124,13 +124,6 @@
 int id_set_two_phase_freq(int cpufreq);
 #endif
 
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE
-int set_two_phase_freq_badass(int cpufreq);
-#endif
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE
-int set_three_phase_freq_badass(int cpufreq);
-#endif
-
 #if 0 /* moved following macros into devices_i_atnt.h */
 /* Macros assume PMIC GPIOs start at 0 */
 #define PM8058_GPIO_BASE			NR_MSM_GPIOS
@@ -619,6 +612,66 @@ static struct platform_device qcedev_device = {
 };
 #endif
 
+static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR * 2] = {
+	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE)] = {
+		.idle_supported = 1,
+		.suspend_supported = 1,
+		.idle_enabled = 0,
+		.suspend_enabled = 0,
+	},
+
+	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)] = {
+		.idle_supported = 1,
+		.suspend_supported = 1,
+		.idle_enabled = 0,
+		.suspend_enabled = 0,
+	},
+
+	[MSM_PM_MODE(0, MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT)] = {
+		.idle_supported = 1,
+		.suspend_supported = 1,
+		.idle_enabled = 1,
+		.suspend_enabled = 1,
+	},
+
+	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_POWER_COLLAPSE)] = {
+		.idle_supported = 1,
+		.suspend_supported = 1,
+		.idle_enabled = 0,
+		.suspend_enabled = 0,
+	},
+
+	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)] = {
+		.idle_supported = 1,
+		.suspend_supported = 1,
+		.idle_enabled = 0,
+		.suspend_enabled = 0,
+	},
+
+	[MSM_PM_MODE(1, MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT)] = {
+		.idle_supported = 1,
+		.suspend_supported = 1,
+		.idle_enabled = 1,
+		.suspend_enabled = 1,
+	},
+};
+
+static struct msm_cpuidle_state msm_cstates[] __initdata = {
+	{0, 0, "C0", "WFI",
+		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
+
+	{0, 1, "C1", "STANDALONE_POWER_COLLAPSE",
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
+
+	{0, 2, "C2", "POWER_COLLAPSE",
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE},
+
+	{1, 0, "C0", "WFI",
+		MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT},
+
+	{1, 1, "C1", "STANDALONE_POWER_COLLAPSE",
+		MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE},
+};
 
 static struct msm_rpmrs_level msm_rpmrs_levels[] __initdata = {
 	{
@@ -5928,7 +5981,7 @@ static unsigned int bcm432x_sdcc_wlan_slot_status(struct device *dev)
 }
 
 static struct mmc_platform_data bcm432x_sdcc_wlan_data = {
-    .ocr_mask   	= MMC_VDD_24_25,
+    .ocr_mask   	= MMC_VDD_30_31,
     .translate_vdd	= msm_sdcc_setup_power,
     .mmc_bus_width	= MMC_CAP_4_BIT_DATA,
     .status     	= bcm432x_sdcc_wlan_slot_status,
@@ -6259,14 +6312,6 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 #ifdef CONFIG_CPU_FREQ_GOV_INTELLIDEMAND_2_PHASE
 	id_set_two_phase_freq(1134000);
 #endif
-
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE
-	set_two_phase_freq_badass(CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE_FREQ);
-#endif
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE
-	set_three_phase_freq_badass(CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE_FREQ);
-#endif
-
 	msm8x60_init_tlmm();
 	msm8x60_init_gpiomux(board_data->gpiomux_cfgs);
 	msm8x60_init_uart12dm();
@@ -6365,7 +6410,10 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 	fixup_i2c_configs();
 	register_i2c_devices();
 
+	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
 	msm_pm_set_rpm_wakeup_irq(RPM_SCSS_CPU0_WAKE_UP_IRQ);
+	msm_cpuidle_set_states(msm_cstates, ARRAY_SIZE(msm_cstates),
+				msm_pm_data);
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
 
 	pm8058_gpios_init();

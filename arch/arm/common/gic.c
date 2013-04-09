@@ -43,7 +43,6 @@
 #include <asm/irq.h>
 #include <asm/exception.h>
 #include <asm/mach/irq.h>
-#include <asm/smp_plat.h>
 #include <asm/hardware/gic.h>
 #include <asm/system.h>
 #include <asm/localtimer.h>
@@ -482,7 +481,11 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	unsigned int gic_irqs = gic->gic_irqs;
 	struct irq_domain *domain = &gic->domain;
 	void __iomem *base = gic_data_dist_base(gic);
-	u32 cpu = cpu_logical_map(smp_processor_id());
+	u32 cpu = 0;
+
+#ifdef CONFIG_SMP
+	cpu = cpu_logical_map(smp_processor_id());
+#endif
 
 	cpumask = 1 << cpu;
 	cpumask |= cpumask << 8;
