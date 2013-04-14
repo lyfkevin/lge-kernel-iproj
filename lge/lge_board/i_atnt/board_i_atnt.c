@@ -121,6 +121,10 @@
 #include <linux/bq24160-charger.h>
 #endif
 
+#ifdef CONFIG_CPU_FREQ_GOV_ONDEMAND_2_PHASE
+	int set_two_phase_freq(int cpufreq);
+#endif
+
 #ifdef CONFIG_CPU_FREQ_GOV_INTELLIDEMAND_2_PHASE
 int id_set_two_phase_freq(int cpufreq);
 #endif
@@ -2161,8 +2165,8 @@ static struct regulator_consumer_supply vreg_consumers_PM8901_S4_PC[] = {
 /* RPM early regulator constraints */
 static struct rpm_regulator_init_data rpm_regulator_early_init_data[] = {
 	/*	 ID       a_on pd ss min_uV   max_uV   init_ip    freq */
-	RPM_SMPS(PM8058_S0, 0, 1, 1,  500000, 1450000, SMPS_HMIN, 1p60),
-	RPM_SMPS(PM8058_S1, 0, 1, 1,  500000, 1450000, SMPS_HMIN, 1p60),
+	RPM_SMPS(PM8058_S0, 0, 1, 1,  500000, 1400000, SMPS_HMIN, 1p60),
+	RPM_SMPS(PM8058_S1, 0, 1, 1,  500000, 1400000, SMPS_HMIN, 1p60),
 };
 
 /* RPM regulator constraints */
@@ -6265,6 +6269,10 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 			machine_is_msm8x60_dragon())
 		msm8x60_init_ebi2();
 
+#ifdef CONFIG_CPU_FREQ_GOV_ONDEMAND_2_PHASE
+        set_two_phase_freq(1134000);
+#endif
+
 #ifdef CONFIG_CPU_FREQ_GOV_INTELLIDEMAND_2_PHASE
 	id_set_two_phase_freq(1134000);
 #endif
@@ -6374,7 +6382,10 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 	fixup_i2c_configs();
 	register_i2c_devices();
 
+	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
 	msm_pm_set_rpm_wakeup_irq(RPM_SCSS_CPU0_WAKE_UP_IRQ);
+	msm_cpuidle_set_states(msm_cstates, ARRAY_SIZE(msm_cstates),
+				msm_pm_data);
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
 
 	pm8058_gpios_init();
