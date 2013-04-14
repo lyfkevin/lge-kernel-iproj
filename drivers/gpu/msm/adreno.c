@@ -29,6 +29,7 @@
 #include "adreno_postmortem.h"
 
 #include "a2xx_reg.h"
+#include "a3xx_reg.h"
 
 #define DRIVER_VERSION_MAJOR   3
 #define DRIVER_VERSION_MINOR   1
@@ -116,6 +117,7 @@ static struct adreno_device device_3d0 = {
  * kernel log.
  */
 unsigned int hang_detect_regs[] = {
+	A3XX_RBBM_STATUS,
 	REG_CP_RB_RPTR,
 	REG_CP_IB1_BASE,
 	REG_CP_IB1_BUFSZ,
@@ -168,6 +170,15 @@ static const struct {
 	{ ADRENO_REV_A225, 2, 2, ANY_ID, ANY_ID,
 		"a225_pm4.fw", "a225_pfp.fw", &adreno_a2xx_gpudev,
 		1536, 768, 3, SZ_512K },
+	/* A3XX doesn't use the pix_shader_start */
+	{ ADRENO_REV_A305, 3, 0, 5, ANY_ID,
+		"a300_pm4.fw", "a300_pfp.fw", &adreno_a3xx_gpudev,
+		512, 0, 2, SZ_256K },
+	/* A3XX doesn't use the pix_shader_start */
+	{ ADRENO_REV_A320, 3, 2, 0, ANY_ID,
+		"a300_pm4.fw", "a300_pfp.fw", &adreno_a3xx_gpudev,
+		512, 0, 2, SZ_512K },
+
 };
 
 static irqreturn_t adreno_irq_handler(struct kgsl_device *device)
@@ -520,6 +531,58 @@ static void adreno_setstate(struct kgsl_device *device,
 }
 
 static unsigned int
+a3xx_getchipid(struct kgsl_device *device)
+{
+	unsigned int majorid, minorid, patchid;
+
+	/*
+	 * We could detect the chipID from the hardware but it takes multiple
+	 * registers to find the right combination. Since we traffic exclusively
+	 * in system on chips, we can be (mostly) confident that a SOC version
+	 * will match a GPU (at this juncture at least).  So do the lazy/quick
+	 * thing and set the chip_id based on the SoC
+	 */
+
+	unsigned int version = socinfo_get_version();
+
+	if (cpu_is_apq8064()) {
+
+		/* A320 */
+		majorid = 2;
+		minorid = 0;
+
+		/*
+		 * V1.1 has some GPU work arounds that we need to communicate
+		 * up to user space via the patchid
+		 */
+
+		if ((SOCINFO_VERSION_MAJOR(version) == 1) &&
+			(SOCINFO_VERSION_MINOR(version) == 1))
+			patchid = 1;
+		else
+			patchid = 0;
+	} else if (cpu_is_msm8930() || cpu_is_msm8627()) {
+
+		/* A305 */
+		majorid = 0;
+		minorid = 5;
+
+		/*
+		 * V1.2 has some GPU work arounds that we need to communicate
+		 * up to user space via the patchid
+		 */
+
+		if ((SOCINFO_VERSION_MAJOR(version) == 1) &&
+			(SOCINFO_VERSION_MINOR(version) == 2))
+			patchid = 2;
+		else
+			patchid = 0;
+	}
+
+	return (0x03 << 24) | (majorid << 16) | (minorid << 8) | patchid;
+}
+
+static unsigned int
 a2xx_getchipid(struct kgsl_device *device)
 {
 	unsigned int chipid = 0;
@@ -562,6 +625,10 @@ a2xx_getchipid(struct kgsl_device *device)
 static unsigned int
 adreno_getchipid(struct kgsl_device *device)
 {
+	if (cpu_is_apq8064() || cpu_is_msm8930() || 
+	    cpu_is_msm8627())
+		return a3xx_getchipid(device);
+	else
 		return a2xx_getchipid(device);
 }
 

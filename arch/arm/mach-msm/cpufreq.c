@@ -70,60 +70,33 @@ static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq)
 		freqs.new = new_freq;
 	freqs.cpu = policy->cpu;
 
-	/*
-	 * Put the caller into SCHED_FIFO priority to avoid cpu starvation
-	 * in the acpuclk_set_rate path while increasing frequencies
-	 */
+       /*
+        * Put the caller into SCHED_FIFO priority to avoid cpu starvation
+        * in the acpuclk_set_rate path while increasing frequencies
+        */
 
-	if (freqs.new > freqs.old && current->policy != SCHED_FIFO) {
-		saved_sched_policy = current->policy;
-		saved_sched_rt_prio = current->rt_priority;
-		sched_setscheduler_nocheck(current, SCHED_FIFO, &param);
-	}
+       if (freqs.new > freqs.old && current->policy != SCHED_FIFO) {
+               saved_sched_policy = current->policy;
+               saved_sched_rt_prio = current->rt_priority;
+               sched_setscheduler_nocheck(current, SCHED_FIFO, &param);
+       }
 
 	cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
+
 	ret = acpuclk_set_rate(policy->cpu, freqs.new, SETRATE_CPUFREQ);
 	if (!ret)
 		cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 
-	/* Restore priority after clock ramp-up */
-	if (freqs.new > freqs.old && saved_sched_policy >= 0) {
-		param.sched_priority = saved_sched_rt_prio;
-		sched_setscheduler_nocheck(current, saved_sched_policy, &param);
-	}
+       /* Restore priority after clock ramp-up */
+       if (freqs.new > freqs.old && saved_sched_policy >= 0) {
+               param.sched_priority = saved_sched_rt_prio;
+               sched_setscheduler_nocheck(current, saved_sched_policy, &param);
+       }
 
 	return ret;
 }
 
 #ifdef CONFIG_SMP
-static int __cpuinit msm_cpufreq_cpu_callback(struct notifier_block *nfb,
-					unsigned long action, void *hcpu)
-{
-	unsigned int cpu = (unsigned long)hcpu;
-
-	switch (action) {
-	case CPU_ONLINE:
-	case CPU_ONLINE_FROZEN:
-		per_cpu(cpufreq_suspend, cpu).device_suspended = 0;
-		break;
-	case CPU_DOWN_PREPARE:
-	case CPU_DOWN_PREPARE_FROZEN:
-		mutex_lock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
-		per_cpu(cpufreq_suspend, cpu).device_suspended = 1;
-		mutex_unlock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
-		break;
-	case CPU_DOWN_FAILED:
-	case CPU_DOWN_FAILED_FROZEN:
-		per_cpu(cpufreq_suspend, cpu).device_suspended = 0;
-		break;
-	}
-	return NOTIFY_OK;
-}
-
-static struct notifier_block __refdata msm_cpufreq_cpu_notifier = {
-	.notifier_call = msm_cpufreq_cpu_callback,
-};
-
 static void set_cpu_work(struct work_struct *work)
 {
 	struct cpufreq_work_struct *cpu_work =
@@ -133,57 +106,6 @@ static void set_cpu_work(struct work_struct *work)
 	complete(&cpu_work->complete);
 }
 #endif
-
-#ifdef CONFIG_CPU_FREQ_GOV_INTELLIDEMAND
-extern bool lmf_screen_state;
-#endif
-
-static void msm_cpu_early_suspend(struct early_suspend *h)
-{
-	int cpu = 0;
-
-	for_each_possible_cpu(cpu) {
-		mutex_lock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
-
-		/* disable 2nd core as well since screen is off */
-		if (cpu == 0 && num_online_cpus() > 1) {
-#ifdef CONFIG_CPU_FREQ_GOV_INTELLIDEMAND
-			lmf_screen_state = false;
-#endif
-#ifndef CONFIG_MSM_MPDEC
-			cpu_down(1);
-#endif
-		}
-		mutex_unlock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
-	}
-}
-
-static void msm_cpu_late_resume(struct early_suspend *h)
-{
-	int cpu = 0;
-
-	for_each_possible_cpu(cpu) {
-
-		mutex_lock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
-
-		/* re-enable 2nd core */
-		if (num_online_cpus() < 2 && cpu == 0) {
-		#ifdef CONFIG_CPU_FREQ_GOV_INTELLIDEMAND
-			lmf_screen_state = true;
-		#endif
-		#ifndef CONFIG_MSM_MPDEC
-			cpu_up(1);
-		#endif
-		}
-		mutex_unlock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
-	}
-}
-
-static struct early_suspend msm_cpu_early_suspend_handler = {
-	.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
-	.suspend = msm_cpu_early_suspend,
-	.resume = msm_cpu_late_resume,
-};
 
 static int msm_cpufreq_target(struct cpufreq_policy *policy,
 				unsigned int target_freq,
@@ -200,6 +122,7 @@ static int msm_cpufreq_target(struct cpufreq_policy *policy,
 		pr_info("cpufreq: cpu %d is not active.\n", policy->cpu);
 		return -ENODEV;
 	}
+
 	if (!alloc_cpumask_var(&mask, GFP_KERNEL))
 		return -ENOMEM;
 #endif
@@ -322,28 +245,34 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 	init_completion(&cpu_work->complete);
 #endif
 
-	/* set safe default min and max speeds */
-	policy->max = CONFIG_MSM_CPU_FREQ_MAX;
+#ifdef CONFIG_MSM_CPU_FREQ_SET_MIN_MAX
 	policy->min = CONFIG_MSM_CPU_FREQ_MIN;
+	policy->max = CONFIG_MSM_CPU_FREQ_MAX;
+#endif
 	return 0;
 }
 
-static int msm_cpufreq_suspend(void)
+/*
+ * Define suspend/resume for cpufreq_driver. Kernel will call
+ * these during suspend/resume with interrupts disabled. This
+ * helps the suspend/resume variable get's updated before cpufreq
+ * governor tries to change the frequency after coming out of suspend.
+ */
+static int msm_cpufreq_suspend(struct cpufreq_policy *policy)
 {
 	int cpu;
 
 	for_each_possible_cpu(cpu) {
-		mutex_lock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
+//		mutex_lock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
 		per_cpu(cpufreq_suspend, cpu).device_suspended = 1;
-		mutex_unlock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
+//		mutex_unlock(&per_cpu(cpufreq_suspend, cpu).suspend_mutex);
 	}
-	if (num_online_cpus() > 1)
-		cpu_down(1);
 
-	return NOTIFY_DONE;
+//	return NOTIFY_DONE;
+	return 0;
 }
 
-static int msm_cpufreq_resume(void)
+static int msm_cpufreq_resume(struct cpufreq_policy *policy)
 {
 	int cpu;
 
@@ -351,22 +280,7 @@ static int msm_cpufreq_resume(void)
 		per_cpu(cpufreq_suspend, cpu).device_suspended = 0;
 	}
 
-	return NOTIFY_DONE;
-}
-
-static int msm_cpufreq_pm_event(struct notifier_block *this,
-				unsigned long event, void *ptr)
-{
-	switch (event) {
-	case PM_POST_HIBERNATION:
-	case PM_POST_SUSPEND:
-		return msm_cpufreq_resume();
-	case PM_HIBERNATION_PREPARE:
-	case PM_SUSPEND_PREPARE:
-		return msm_cpufreq_suspend();
-	default:
-		return NOTIFY_DONE;
-	}
+	return 0;
 }
 
 static ssize_t store_mfreq(struct sysdev_class *class,
@@ -397,14 +311,12 @@ static struct cpufreq_driver msm_cpufreq_driver = {
 	/* lps calculations are handled here. */
 	.flags		= CPUFREQ_STICKY | CPUFREQ_CONST_LOOPS,
 	.init		= msm_cpufreq_init,
-	.verify		= msm_cpufreq_verify,
-	.target		= msm_cpufreq_target,
+	.verify	= msm_cpufreq_verify,
+	.target	= msm_cpufreq_target,
+	.suspend	= msm_cpufreq_suspend,
+	.resume	= msm_cpufreq_resume,
 	.name		= "msm",
 	.attr		= msm_freq_attr,
-};
-
-static struct notifier_block msm_cpufreq_pm_notifier = {
-	.notifier_call = msm_cpufreq_pm_event,
 };
 
 static int __init msm_cpufreq_register(void)
@@ -423,12 +335,7 @@ static int __init msm_cpufreq_register(void)
 
 #ifdef CONFIG_SMP
 	msm_cpufreq_wq = create_workqueue("msm-cpufreq");
-	register_hotcpu_notifier(&msm_cpufreq_cpu_notifier);
 #endif
-
-	register_pm_notifier(&msm_cpufreq_pm_notifier);
-
-	register_early_suspend(&msm_cpu_early_suspend_handler);	
 
 	return cpufreq_register_driver(&msm_cpufreq_driver);
 }

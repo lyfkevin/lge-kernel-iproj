@@ -140,6 +140,7 @@ struct adreno_recovery_data {
 };
 
 extern struct adreno_gpudev adreno_a2xx_gpudev;
+extern struct adreno_gpudev adreno_a3xx_gpudev;
 
 /* A2XX register sets defined in adreno_a2xx.c */
 extern const unsigned int a200_registers[];
@@ -148,6 +149,10 @@ extern const unsigned int a225_registers[];
 extern const unsigned int a200_registers_count;
 extern const unsigned int a220_registers_count;
 extern const unsigned int a225_registers_count;
+
+/* A3XX register set defined in adreno_a3xx.c */
+extern const unsigned int a3xx_registers[];
+extern const unsigned int a3xx_registers_count;
 
 extern unsigned int hang_detect_regs[];
 extern const unsigned int hang_detect_regs_count;
@@ -217,6 +222,11 @@ static inline int adreno_is_a22x(struct adreno_device *adreno_dev)
 static inline int adreno_is_a2xx(struct adreno_device *adreno_dev)
 {
 	return (adreno_dev->gpurev <= 299);
+}
+
+static inline int adreno_is_a3xx(struct adreno_device *adreno_dev)
+{
+	return (adreno_dev->gpurev >= 300);
 }
 
 static inline int adreno_is_a305(struct adreno_device *adreno_dev)

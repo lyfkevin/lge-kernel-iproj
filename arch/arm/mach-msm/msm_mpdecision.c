@@ -32,8 +32,6 @@
 #include <linux/hrtimer.h>
 #include <linux/delay.h>
 
-#include "acpuclock.h"
-
 #define MPDEC_TAG                       "[MPDEC]: "
 #define MSM_MPDEC_STARTDELAY            70000
 #define MSM_MPDEC_DELAY                 500
@@ -72,10 +70,11 @@ static struct msm_mpdec_tuners {
 	.idle_freq = MSM_MPDEC_IDLE_FREQ,
 };
 
-static unsigned int NwNs_Threshold[4] = {35, 0, 0, 5};
-static unsigned int TwTs_Threshold[4] = {250, 0, 0, 250};
+static unsigned int NwNs_Threshold[4] = {25, 0, 0, 5};
+static unsigned int TwTs_Threshold[4] = {240, 0, 0, 240};
 
 extern unsigned int get_rq_info(void);
+extern unsigned long acpuclk_8x60_get_rate(int);
 
 unsigned int state = MSM_MPDEC_IDLE;
 bool was_paused = false;
@@ -113,18 +112,25 @@ static int mp_decision(void)
 		index = (nr_cpu_online - 1) * 2;
 		if ((nr_cpu_online < 2) && (rq_depth >= NwNs_Threshold[index])) {
 			if (total_time >= TwTs_Threshold[index]) {
-				new_state = MSM_MPDEC_UP;
-                                if (acpuclk_get_rate((CONFIG_NR_CPUS - 2)) <=
-                                    msm_mpdec_tuners_ins.idle_freq)
-                                        new_state = MSM_MPDEC_IDLE;
+				if (acpuclk_8x60_get_rate((CONFIG_NR_CPUS - 2)) <=
+					msm_mpdec_tuners_ins.idle_freq) {
+						new_state = MSM_MPDEC_IDLE;
+				}
+				else {
+						new_state = MSM_MPDEC_UP;
+				}
 			}
 		} else if (rq_depth <= NwNs_Threshold[index+1]) {
 			if (total_time >= TwTs_Threshold[index+1] ) {
-				new_state = MSM_MPDEC_DOWN;
-                                if (cpu_online((CONFIG_NR_CPUS - 1)))
-		                        if (acpuclk_get_rate((CONFIG_NR_CPUS - 1)) >
-                                            msm_mpdec_tuners_ins.idle_freq)
+                                if (cpu_online((CONFIG_NR_CPUS - 1))) {
+		                	if (acpuclk_8x60_get_rate((CONFIG_NR_CPUS - 1)) >
+                                            msm_mpdec_tuners_ins.idle_freq) {
 			                        new_state = MSM_MPDEC_IDLE;
+					}
+					else {
+						new_state = MSM_MPDEC_DOWN;
+					}
+				}
 			}
 		} else {
 			new_state = MSM_MPDEC_IDLE;
@@ -273,8 +279,9 @@ show_one(startdelay, startdelay);
 show_one(delay, delay);
 show_one(pause, pause);
 show_one(scroff_single_core, scroff_single_core);
+
 static ssize_t show_idle_freq (struct kobject *kobj, struct attribute *attr,
-					char *buf)
+                                   char *buf)
 {
 	return sprintf(buf, "%lu\n", msm_mpdec_tuners_ins.idle_freq);
 }
@@ -365,14 +372,14 @@ static ssize_t store_pause(struct kobject *a, struct attribute *b,
 }
 
 static ssize_t store_idle_freq(struct kobject *a, struct attribute *b,
-					const char *buf, size_t count)
+				   const char *buf, size_t count)
 {
 	long unsigned int input;
 	int ret;
 	ret = sscanf(buf, "%lu", &input);
 	if (ret != 1)
 		return -EINVAL;
-	msm_mpdec_tuners_ins.idle_freq = input;
+	msm_mpdec_tuners_ins.idle_freq = acpu_check_khz_value(input);
 
 	return count;
 }

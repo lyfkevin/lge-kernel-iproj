@@ -381,6 +381,7 @@ void kgsl_pwrctrl_uninit_sysfs(struct kgsl_device *device)
 	kgsl_remove_device_sysfs_files(device->dev, pwrctrl_attr_list);
 }
 
+
 static void update_statistics(struct kgsl_device *device)
 {
 	struct kgsl_clk_stats *clkstats = &device->pwrctrl.clk_stats;
@@ -426,7 +427,7 @@ static void kgsl_pwrctrl_busy_time(struct kgsl_device *device, bool on_time)
 	if (device->id == 0 &&
 		device->state == KGSL_STATE_ACTIVE &&
 		pwr->active_pwrlevel == KGSL_PWRLEVEL_TURBO) {
-		if (clkstats->on_time_old > LMF_BROWSER_THRESHOLD)
+		if (clkstats->elapsed_old > LMF_BROWSER_THRESHOLD)
 			lmf_browser_state = false;
 		else
 			 lmf_browser_state = true;
