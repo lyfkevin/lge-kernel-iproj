@@ -21,6 +21,8 @@
 #include "kgsl_device.h"
 #include "kgsl_trace.h"
 
+#include <linux/cpufreq.h>
+
 #define KGSL_PWRFLAGS_POWER_ON 0
 #define KGSL_PWRFLAGS_CLK_ON   1
 #define KGSL_PWRFLAGS_AXI_ON   2
@@ -32,6 +34,10 @@
 
 #ifdef CONFIG_SEC_LIMIT_MAX_FREQ
 #define LMF_BROWSER_THRESHOLD  500000
+#endif
+
+#ifdef CONFIG_CPU_FREQ_GOV_BADASS_GPU_CONTROL
+extern bool gpu_busy_state;
 #endif
 
 struct clk_pair {
@@ -432,6 +438,15 @@ static void kgsl_pwrctrl_busy_time(struct kgsl_device *device, bool on_time)
 		else
 			 lmf_browser_state = true;
 	}
+
+
+#ifdef CONFIG_CPU_FREQ_GOV_BADASS_GPU_CONTROL
+	if (on_time)
+		gpu_busy_state = true;
+	else
+		gpu_busy_state = false;
+#endif
+
 #endif
 }
 

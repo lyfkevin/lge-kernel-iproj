@@ -1338,7 +1338,7 @@ dhd_sendpkt(dhd_pub_t *dhdp, int ifidx, void *pktbuf)
 int
 dhd_start_xmit(struct sk_buff *skb, struct net_device *net)
 {
-	int ret = 0;
+	int ret;
 	void *pktbuf;
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(net);
 	int ifidx;
@@ -2381,7 +2381,7 @@ dhd_cleanup_virt_ifaces(dhd_info_t *dhd)
 static int
 dhd_stop(struct net_device *net)
 {
-	int ifidx;
+	int ifidx = 0;
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(net);
 	DHD_OS_WAKE_LOCK(&dhd->pub);
 	DHD_ERROR(("%s: Enter\n", __FUNCTION__));
