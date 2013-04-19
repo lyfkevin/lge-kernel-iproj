@@ -604,7 +604,7 @@ void mdp4_mixer_stage_commit(int mixer);
 void mdp4_dsi_cmd_do_update(int cndx, struct mdp4_overlay_pipe *pipe);
 void mdp4_lcdc_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe);
 void mdp4_dtv_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe);
-void mdp4_overlay_pipe_free(struct mdp4_overlay_pipe *pipe);
+void mdp4_overlay_pipe_free(struct mdp4_overlay_pipe *pipe, int all);
 void mdp4_overlay_dmap_cfg(struct msm_fb_data_type *mfd, int lcdc);
 void mdp4_overlay_dmap_xy(struct mdp4_overlay_pipe *pipe);
 void mdp4_overlay_dmae_cfg(struct msm_fb_data_type *mfd, int atv);
@@ -773,7 +773,6 @@ void mdp4_dsi_cmd_dma_busy_check(void);
 
 
 #ifdef CONFIG_FB_MSM_MIPI_DSI
-void mdp_dsi_cmd_overlay_suspend(struct msm_fb_data_type *mfd);
 int mdp4_dsi_cmd_on(struct platform_device *pdev);
 int mdp4_dsi_cmd_off(struct platform_device *pdev);
 int mdp4_dsi_video_off(struct platform_device *pdev);
