@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -252,8 +252,6 @@ static void vid_enc_output_frame_done(struct video_client_ctx *client_ctx,
 		/* Timestamp pass-through from input frame */
 		venc_msg->venc_msg_info.buf.timestamp =
 			vcd_frame_data->time_stamp;
-		venc_msg->venc_msg_info.buf.sz =
-			vcd_frame_data->alloc_len;
 
 		/* Decoded picture width and height */
 		venc_msg->venc_msg_info.msgdata_size =
@@ -271,7 +269,7 @@ static void vid_enc_output_frame_done(struct video_client_ctx *client_ctx,
 			msm_ion_do_cache_op(client_ctx->user_ion_client,
 				buff_handle,
 				(unsigned long *) kernel_vaddr,
-				(unsigned long)venc_msg->venc_msg_info.buf.sz,
+				(unsigned long)venc_msg->venc_msg_info.buf.len,
 				ION_IOC_CLEAN_INV_CACHES);
 		}
 	}
@@ -1618,31 +1616,6 @@ static long vid_enc_ioctl(struct file *file,
 						&vcd_property_hdr, &enable);
 		if (vcd_status) {
 			pr_err(" Setting slice delivery mode failed");
-			return -EIO;
-		}
-		break;
-	}
-	case VEN_IOCTL_SET_SPS_PPS_FOR_IDR:
-	{
-		struct vcd_property_hdr vcd_property_hdr;
-		struct vcd_property_sps_pps_for_idr_enable idr_enable;
-		u32 vcd_status = VCD_ERR_FAIL;
-		u32 enabled = 1;
-
-		if (copy_from_user(&venc_msg, arg, sizeof(venc_msg)))
-			return -EFAULT;
-
-		vcd_property_hdr.prop_id = VCD_I_ENABLE_SPS_PPS_FOR_IDR;
-		vcd_property_hdr.sz = sizeof(idr_enable);
-
-		if (copy_from_user(&enabled, venc_msg.in, sizeof(u32)))
-			return -EFAULT;
-
-		idr_enable.sps_pps_for_idr_enable_flag = enabled;
-		vcd_status = vcd_set_property(client_ctx->vcd_handle,
-				&vcd_property_hdr, &idr_enable);
-		if (vcd_status) {
-			pr_err("Setting sps/pps per IDR failed");
 			return -EIO;
 		}
 		break;
