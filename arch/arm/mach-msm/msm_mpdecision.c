@@ -30,7 +30,7 @@
 #include <linux/delay.h>
 
 #define MPDEC_TAG                       "[AnthraX-MPD]: "
-#define MSM_MPDEC_SCROFF_FREQ           486000
+#define MSM_MPDEC_SCROFF_FREQ           CONFIG_MSM_MPDEC_SCROFF_FREQ
 
 enum {
 	MSM_MPDEC_DISABLED = 0,
