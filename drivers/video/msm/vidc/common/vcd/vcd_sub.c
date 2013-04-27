@@ -40,8 +40,6 @@ static int vcd_pmem_alloc(size_t sz, u8 **kernel_vaddr, u8 **phy_addr,
 	unsigned long buffer_size = 0;
 	int ret = 0;
 	unsigned long ionflag = 0;
-	ion_phys_addr_t phyaddr = 0;
-	size_t len = 0;
 
 	if (!kernel_vaddr || !phy_addr || !cctxt) {
 		pr_err("\n%s: Invalid parameters", __func__);
@@ -85,9 +83,6 @@ static int vcd_pmem_alloc(size_t sz, u8 **kernel_vaddr, u8 **phy_addr,
 		}
 		*phy_addr = (u8 *) mapped_buffer->iova[0];
 		*kernel_vaddr = (u8 *) mapped_buffer->vaddr;
-		VCD_MSG_LOW("vcd_pmem_alloc: phys(0x%x), virt(0x%x), "\
-			"sz(%u), flags(0x%x)", (u32)*phy_addr,
-			(u32)*kernel_vaddr, sz, (u32)flags);
 	} else {
 		map_buffer->alloc_handle = ion_alloc(
 			    cctxt->vcd_ion_client, sz, SZ_4K,
@@ -110,8 +105,7 @@ static int vcd_pmem_alloc(size_t sz, u8 **kernel_vaddr, u8 **phy_addr,
 			pr_err("%s() ION map failed", __func__);
 			goto ion_free_bailout;
 		}
-		if (res_trk_get_core_type() != (u32)VCD_CORE_720P) {
-			ret = ion_map_iommu(cctxt->vcd_ion_client,
+		ret = ion_map_iommu(cctxt->vcd_ion_client,
 				map_buffer->alloc_handle,
 				VIDEO_DOMAIN,
 				VIDEO_MAIN_POOL,
@@ -120,32 +114,18 @@ static int vcd_pmem_alloc(size_t sz, u8 **kernel_vaddr, u8 **phy_addr,
 				(unsigned long *)&iova,
 				(unsigned long *)&buffer_size,
 				UNCACHED, 0);
-			if (ret) {
-				pr_err("%s() ION iommu map failed", __func__);
-				goto ion_map_bailout;
-			}
-			map_buffer->phy_addr = iova;
-		} else {
-			ret = ion_phys(cctxt->vcd_ion_client,
-				map_buffer->alloc_handle,
-				&phyaddr,
-				&len);
-			if (ret) {
-				pr_err("%s() ion_phys failed", __func__);
-				goto ion_map_bailout;
-			}
-			map_buffer->phy_addr = phyaddr;
+		if (ret) {
+			pr_err("%s() ION iommu map failed", __func__);
+			goto ion_map_bailout;
 		}
+		map_buffer->phy_addr = iova;
 		if (!map_buffer->phy_addr) {
 			pr_err("%s() acm alloc failed", __func__);
 			goto free_map_table;
 		}
-		*phy_addr = (u8 *)map_buffer->phy_addr;
+		*phy_addr = (u8 *)iova;
 		mapped_buffer = NULL;
 		map_buffer->mapped_buffer = NULL;
-		VCD_MSG_LOW("vcd_ion_alloc: phys(0x%x), virt(0x%x), "\
-			"sz(%u), ionflags(0x%x)", (u32)*phy_addr,
-			(u32)*kernel_vaddr, sz, (u32)ionflag);
 	}
 
 	return 0;
@@ -195,13 +175,10 @@ static int vcd_pmem_free(u8 *kernel_vaddr, u8 *phy_addr,
 	if (map_buffer->mapped_buffer)
 		msm_subsystem_unmap_buffer(map_buffer->mapped_buffer);
 	if (cctxt->vcd_enable_ion) {
-		VCD_MSG_LOW("vcd_ion_free: phys(0x%x), virt(0x%x)",
-			(u32)phy_addr, (u32)kernel_vaddr);
 		if (map_buffer->alloc_handle) {
 			ion_unmap_kernel(cctxt->vcd_ion_client,
 					map_buffer->alloc_handle);
-			if (res_trk_get_core_type() != (u32)VCD_CORE_720P)
-				ion_unmap_iommu(cctxt->vcd_ion_client,
+			ion_unmap_iommu(cctxt->vcd_ion_client,
 					map_buffer->alloc_handle,
 					VIDEO_DOMAIN,
 					VIDEO_MAIN_POOL);
@@ -209,8 +186,6 @@ static int vcd_pmem_free(u8 *kernel_vaddr, u8 *phy_addr,
 			map_buffer->alloc_handle);
 		}
 	} else {
-		VCD_MSG_LOW("vcd_pmem_free: phys(0x%x), virt(0x%x)",
-			(u32)phy_addr, (u32)kernel_vaddr);
 		free_contiguous_memory_by_paddr(
 			(unsigned long)map_buffer->phy_addr);
 	}
@@ -2091,8 +2066,8 @@ u32 vcd_validate_io_done_pyld(
 		rc = VCD_ERR_CLIENT_FATAL;
 
 	if (VCD_FAILED(rc)) {
-		VCD_MSG_FATAL(
-			"vcd_validate_io_done_pyld: invalid transaction");
+		VCD_MSG_FATAL("vcd_validate_io_done_pyld: "\
+			"invalid transaction 0x%x", (u32)transc);
 	} else if (!frame->vcd_frm.virtual &&
 		status != VCD_ERR_INTRLCD_FIELD_DROP)
 		rc = VCD_ERR_BAD_POINTER;
@@ -3034,7 +3009,6 @@ u32 vcd_req_perf_level(
 {
 	u32 rc;
 	u32 res_trk_perf_level;
-	u32 turbo_perf_level;
 	if (!perf_level) {
 		VCD_MSG_ERROR("Invalid parameters\n");
 		return -EINVAL;
@@ -3044,13 +3018,10 @@ u32 vcd_req_perf_level(
 		rc = -ENOTSUPP;
 		goto perf_level_not_supp;
 	}
-	turbo_perf_level = get_res_trk_perf_level(VCD_PERF_LEVEL_TURBO);
 	rc = vcd_set_perf_level(cctxt->dev_ctxt, res_trk_perf_level);
 	if (!rc) {
 		cctxt->reqd_perf_lvl = res_trk_perf_level;
 		cctxt->perf_set_by_client = 1;
-		if (res_trk_perf_level == turbo_perf_level)
-			cctxt->is_turbo_enabled = true;
 	}
 perf_level_not_supp:
 	return rc;
