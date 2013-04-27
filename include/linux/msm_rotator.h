@@ -50,7 +50,7 @@ struct msm_rotator_data_info {
 	unsigned int version_key;
 	struct msmfb_data src_chroma;
 	struct msmfb_data dst_chroma;
-	uint32_t wait_for_finish;
+	struct mdp_buf_fence buf_fence;
 };
 
 struct msm_rot_clocks {
