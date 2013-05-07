@@ -3,7 +3,7 @@
  * MSM architecture cpufreq driver
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2007-2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2007-2013, The Linux Foundation. All rights reserved.
  * Author: Mike A. Chan <mikechan@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -161,6 +161,7 @@ static int msm_cpufreq_target(struct cpufreq_policy *policy,
 {
 	int ret = -EFAULT;
 	int index;
+	int ret = 0;
 	struct cpufreq_frequency_table *table;
 #ifdef CONFIG_SMP
 	struct cpufreq_work_struct *cpu_work = NULL;
@@ -338,19 +339,17 @@ static int __cpuinit msm_cpufreq_init(struct cpufreq_policy *policy)
 				policy->cpu, cur_freq);
 		return -EINVAL;
 	}
-
-	if (cur_freq != table[index].frequency) {
-		int ret = 0;
-		ret = acpuclk_set_rate(policy->cpu, table[index].frequency,
-				SETRATE_CPUFREQ);
-		if (ret)
-			return ret;
-		pr_info("cpufreq: cpu%d init at %d switching to %d\n",
-				policy->cpu, cur_freq, table[index].frequency);
-		cur_freq = table[index].frequency;
-	}
-
-	policy->cur = cur_freq;
+	/*
+	 * Call set_cpu_freq unconditionally so that when cpu is set to
+	 * online, frequency limit will always be updated.
+	 */
+	ret = set_cpu_freq(policy, table[index].frequency);
+	if (ret)
+		return ret;
+	pr_debug("cpufreq: cpu%d init at %d switching to %d\n",
+			policy->cpu, cur_freq, table[index].frequency);
+	policy->cur = table[index].frequency;
+	
 
 	policy->cpuinfo.transition_latency =
 		acpuclk_get_switch_time() * NSEC_PER_USEC;
@@ -462,5 +461,5 @@ static int __init msm_cpufreq_register(void)
 	return cpufreq_register_driver(&msm_cpufreq_driver);
 }
 
-late_initcall(msm_cpufreq_register);
+device_initcall(msm_cpufreq_register);
 
