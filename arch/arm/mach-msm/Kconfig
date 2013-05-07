@@ -1346,31 +1346,6 @@ config MSM_MPDEC
           This enables kernel based multi core control.
           (up/down hotplug based on load)
 
-config MSM_MPDEC_STARTDELAY
-        int "Deplay before starting MP DECISION"
-        default 70000
-        depends on MSM_MPDEC
-
-config MSM_MPDEC_DELAY
-        int "Deplay before resuming MP DECISION"
-        default 500
-        depends on MSM_MPDEC
-
-config MSM_MPDEC_PAUSE
-        int "How long to pause after external process controls cpu"
-        default 10000
-        depends on MSM_MPDEC
-
-config MSM_MPDEC_SCROFF_FREQ
-        int "Screen Off MAX CPU"
-        default 384000
-        depends on MSM_MPDEC
-
-config MSM_MPDEC_IDLE_FREQ
-        int "Idle MAX CPU"
-        default 384000
-        depends on MSM_MPDEC
-
 config CPU_VOLTAGE_TABLE
 	bool "Enable CPU Voltage Table via sysfs for adjustements"
 	default n
