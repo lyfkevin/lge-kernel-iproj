@@ -920,9 +920,9 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 #ifndef CONFIG_LGE_BROADCAST_TDMB
 		mask = 0xFFFCF1FF;
 #else
-		/* ìœ„ì˜ ì¡°ê±´ì€ ì‚¬ìš©í•˜ëŠ” pipeê°€ ë°”ë€” ë•Œë¼ì„œ dmb ì§„ìž…/ì¢…ë£Œ ì‹œì—ë§Œ íƒ„ë‹¤.                         */
-		/* ë”°ë¼ì„œ ì‹¤ì œ íŠœë‹í•  ë•ŒëŠ” elseë¥¼ íƒ€ë¯€ë¡œ OVERLAY_TYPE_RGBê°€ ì•„ë‹ ë•Œ ë‹¤ì‹œ ë§í•´ VIDEO TYPEì¼ ë•Œ */
-		/* mdp_csc_convertì— ì„¤ì •í•´ë‘” ê°’ì„ ì“¸ ìˆ˜ ìžˆë„ë¡ ì½”ë“œë¥¼ ë¡œì»¬ë¡œ ì¶”ê°€í•´ì„œ ì“´ë‹¤.                  */
+		/* À§ÀÇ Á¶°ÇÀº »ç¿ëÇÏ´Â pipe°¡ ¹Ù²ð ¶§¶ó¼­ dmb ÁøÀÔ/Á¾·á ½Ã¿¡¸¸ Åº´Ù.                         */
+		/* µû¶ó¼­ ½ÇÁ¦ Æ©´×ÇÒ ¶§´Â else¸¦ Å¸¹Ç·Î OVERLAY_TYPE_RGB°¡ ¾Æ´Ò ¶§ ´Ù½Ã ¸»ÇØ VIDEO TYPEÀÏ ¶§ */
+		/* mdp_csc_convert¿¡ ¼³Á¤ÇØµÐ °ªÀ» ¾µ ¼ö ÀÖµµ·Ï ÄÚµå¸¦ ·ÎÄÃ·Î Ãß°¡ÇØ¼­ ¾´´Ù.                  */
 		if (ptype != OVERLAY_TYPE_RGB) {
 			addr = ((uint32_t)vg_base) + 0x4000;
 			mdp4_csc_write(&(mdp_csc_convert[1]), addr);
