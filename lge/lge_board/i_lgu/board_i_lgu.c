@@ -1756,10 +1756,10 @@ static struct touch_device_caps touch_caps = {
 };
 
 static struct touch_operation_role touch_role = {
-	.operation_mode     = INTERRUPT_MODE,
-	.key_type      = TOUCH_HARD_KEY,
-	.report_mode      = REDUCED_REPORT_MODE,//CONTINUOUS_REPORT_MODE,
-	.delta_pos_threshold     = 5,//0,
+	.operation_mode 		= INTERRUPT_MODE,
+	.key_type				= TOUCH_HARD_KEY,
+	.report_mode			= CONTINUOUS_REPORT_MODE,
+	.delta_pos_threshold 	= 0,
 	.orientation 			= 0,
 	.report_period			= 12500000,
 	.booting_delay 			= 400,
@@ -1767,7 +1767,7 @@ static struct touch_operation_role touch_role = {
 	.suspend_pwr			= POWER_OFF,
 	.jitter_filter_enable	= 1,
 	.jitter_curr_ratio		= 30,	
-    .accuracy_filter_enable = 1,
+        .accuracy_filter_enable = 1,
 	.sleep_mode             = 0,
 	.ta_debouncing_mode     = 1,
 	.irqflags 				= IRQF_TRIGGER_FALLING,
@@ -2292,10 +2292,10 @@ static struct rpm_regulator_init_data rpm_regulator_init_data[] = {
 	RPM_NCP(PM8058_NCP, 0, 1, 0, 0, 0), /* -1V8_NCP ==> NC  */
 
 	RPM_LDO(PM8901_L0,  0, 1, 0, 0, 0, LDO300HMIN), /* NC */
-	RPM_LDO(PM8901_L1,  0, 1, 0, 3000000, 3000000, LDO300HMIN), /* +3V0_MOTOR */ //sungwoo.cho@lge.com
+	RPM_LDO(PM8901_L1,  0, 1, 0, 3000000, 3000000, LDO300HMIN), /* +3V0_MOTOR */ //                   
 	RPM_LDO(PM8901_L2,  0, 1, 0, 2800000, 2800000, LDO300HMIN), /* +2.8V0_LCD_VCC */
 	RPM_LDO(PM8901_L3,  0, 1, 0, 2800000, 2800000, LDO300HMIN), /* +2.8V0_LCD_VCI */
-	RPM_LDO(PM8901_L4,  0, 1, 0, 2800000, 2800000, LDO300HMIN), /* 2V8_VTCAM_AVDD */ //jisun.shin@lge.com
+	RPM_LDO(PM8901_L4,  0, 1, 0, 2800000, 2800000, LDO300HMIN), /* 2V8_VTCAM_AVDD */ //                  
 	RPM_LDO(PM8901_L5,  0, 1, 0, 2850000, 2850000, LDO300HMIN), /* +2V85_eMMC */
 	RPM_LDO(PM8901_L6,  0, 1, 0, 0, 0, LDO300HMIN), /* NC */
 
