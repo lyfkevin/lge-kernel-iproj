@@ -488,14 +488,6 @@ struct mdp_buf_sync {
 	int *rel_fen_fd;
 };
 
-struct msmfb_metadata {
-	uint32_t op;
-	uint32_t flags;
-	union {
-		uint32_t panel_frame_rate;
-	} data;
-};
-
 struct mdp_buf_fence {
 	uint32_t flags;
 	uint32_t acq_fen_fd_cnt;
