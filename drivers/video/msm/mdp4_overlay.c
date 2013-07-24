@@ -255,7 +255,8 @@ int mdp4_overlay_iommu_map_buf(int mem_id,
 	else
 		size *= 2;
 
-	pr_debug("%s(): ion_hdl %p, ion_buf %d\n", __func__, *srcp_ihdl, mem_id);
+	pr_debug("%s(): ion_hdl %p, size 0x%lx\n", __func__,
+		*srcp_ihdl, size);
 	pr_debug("mixer %u, pipe %u, plane %u\n", pipe->mixer_num,
 		pipe->pipe_ndx, plane);
 	if (ion_map_iommu(display_iclient, *srcp_ihdl,
