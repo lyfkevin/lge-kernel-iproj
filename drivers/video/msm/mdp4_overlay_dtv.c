@@ -811,11 +811,6 @@ int mdp4_dtv_off(struct platform_device *pdev)
 	mdp4_overlay_iommu_unmap_freelist(mixer);
 	mdp4_overlay_iommu_unmap_freelist(mixer);
 
-	if (vctrl->vsync_irq_enabled) {
-		vctrl->vsync_irq_enabled = 0;
-		mdp4_dtv_vsync_irq_ctrl(cndx, 0);
-	}
-
 	/* Mdp clock disable */
 	mdp_clk_ctrl(0);
 
