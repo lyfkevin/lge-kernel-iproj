@@ -745,7 +745,6 @@ int mdp4_dtv_off(struct platform_device *pdev)
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
 	struct vsync_update *vp;
-	int mixer = 0;
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
@@ -760,9 +759,8 @@ int mdp4_dtv_off(struct platform_device *pdev)
 
 	pipe = vctrl->base_pipe;
 	if (pipe != NULL) {
-		mixer = pipe->mixer_num;
 		/* sanity check, free pipes besides base layer */
-		mdp4_overlay_unset_mixer(mixer);
+		mdp4_overlay_unset_mixer(pipe->mixer_num);
 		if (hdmi_prim_display && mfd->ref_cnt == 0) {
 			/* adb stop */
 			if (pipe->pipe_type == OVERLAY_TYPE_BF)
@@ -801,13 +799,10 @@ int mdp4_dtv_off(struct platform_device *pdev)
 	ret = panel_next_off(pdev);
 	mdp_footswitch_ctrl(FALSE);
 
-	/*
-	 * clean up ion freelist
-	 * there need two stage to empty ion free list
-	 * therefore need call unmap freelist twice
-	 */
-	mdp4_overlay_iommu_unmap_freelist(mixer);
-	mdp4_overlay_iommu_unmap_freelist(mixer);
+	if (vctrl->vsync_irq_enabled) {
+		vctrl->vsync_irq_enabled = 0;
+		mdp4_dtv_vsync_irq_ctrl(cndx, 0);
+	}
 
 	/* Mdp clock disable */
 	mdp_clk_ctrl(0);
