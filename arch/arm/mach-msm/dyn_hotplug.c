@@ -25,7 +25,7 @@
 #include <linux/slab.h>
 
 #define DELAY		(HZ / 2)
-#define UP_THRESHOLD	(65)
+#define UP_THRESHOLD	(35)
 #define MIN_ONLINE	(1)
 
 static int enabled;
