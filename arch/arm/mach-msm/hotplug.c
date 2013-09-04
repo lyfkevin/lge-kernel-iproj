@@ -18,8 +18,7 @@
 
 #include <mach/msm_rtb.h>
 
-#include <mach/pm.h>
-
+#include "pm.h"
 #include "qdss.h"
 #include "spm.h"
 
