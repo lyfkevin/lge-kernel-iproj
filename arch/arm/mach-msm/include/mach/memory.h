@@ -18,9 +18,7 @@
 #include <linux/types.h>
 
 /* physical offset of RAM */
-
 #define PLAT_PHYS_OFFSET UL(CONFIG_PHYS_OFFSET)
-
 
 #define MAX_PHYSMEM_BITS 32
 #define SECTION_SIZE_BITS 28
@@ -36,14 +34,17 @@
 */
 
 #if defined(CONFIG_ARCH_MSM7X30)
-#ifndef __ASSEMBLY__
-extern unsigned int ebi0_size;
 
 #define EBI0_PHYS_OFFSET PHYS_OFFSET
 #define EBI0_PAGE_OFFSET PAGE_OFFSET
+#define EBI0_SIZE 0x10000000
 
-#define EBI1_PHYS_OFFSET 0x40000000
-#define EBI1_PAGE_OFFSET (EBI0_PAGE_OFFSET + ebi0_size)
+#ifndef __ASSEMBLY__
+
+extern unsigned long ebi1_phys_offset;
+
+#define EBI1_PHYS_OFFSET (ebi1_phys_offset)
+#define EBI1_PAGE_OFFSET (EBI0_PAGE_OFFSET + EBI0_SIZE)
 
 #if (defined(CONFIG_SPARSEMEM) && defined(CONFIG_VMSPLIT_3G))
 
@@ -56,16 +57,24 @@ extern unsigned int ebi0_size;
 	((virt) >= EBI1_PAGE_OFFSET ?			\
 	(virt) - EBI1_PAGE_OFFSET + EBI1_PHYS_OFFSET :	\
 	(virt) - EBI0_PAGE_OFFSET + EBI0_PHYS_OFFSET)
-#endif
+
 #endif
 #endif
 
+#endif
+
 #ifndef __ASSEMBLY__
+void *alloc_bootmem_aligned(unsigned long size, unsigned long alignment);
 void *allocate_contiguous_ebi(unsigned long, unsigned long, int);
-phys_addr_t allocate_contiguous_ebi_nomap(unsigned long, unsigned long);
+unsigned long allocate_contiguous_ebi_nomap(unsigned long, unsigned long);
 void clean_and_invalidate_caches(unsigned long, unsigned long, unsigned long);
 void clean_caches(unsigned long, unsigned long, unsigned long);
 void invalidate_caches(unsigned long, unsigned long, unsigned long);
+int platform_physical_remove_pages(u64, u64);
+int platform_physical_active_pages(u64, u64);
+int platform_physical_low_power_pages(u64, u64);
+
+extern int (*change_memory_power)(u64, u64, int);
 
 #if defined(CONFIG_ARCH_MSM_ARM11) || defined(CONFIG_ARCH_MSM_CORTEX_A5)
 void write_to_strongly_ordered_memory(void);
@@ -85,6 +94,7 @@ extern void store_ttbr0(void);
 #ifdef CONFIG_DONT_MAP_HOLE_AFTER_MEMBANK0
 extern unsigned long membank0_size;
 extern unsigned long membank1_start;
+void find_membank0_hole(void);
 
 #define MEMBANK0_PHYS_OFFSET PHYS_OFFSET
 #define MEMBANK0_PAGE_OFFSET PAGE_OFFSET

@@ -302,6 +302,8 @@ armpmu_del(struct perf_event *event, int flags)
 	struct hw_perf_event *hwc = &event->hw;
 	int idx = hwc->idx;
 
+	WARN_ON(idx < 0);
+
 	clear_bit(idx, cpuc->active_mask);
 	armpmu_stop(event, PERF_EF_UPDATE);
 	cpuc->events[idx] = NULL;

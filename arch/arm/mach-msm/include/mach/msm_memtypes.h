@@ -29,6 +29,7 @@ unsigned int get_num_populated_chipselects(void);
 unsigned int get_num_memory_banks(void);
 unsigned int get_memory_bank_size(unsigned int);
 unsigned int get_memory_bank_start(unsigned int);
+int soc_change_memory_power(u64, u64, int);
 
 enum {
 	MEMTYPE_NONE = -1,
@@ -45,9 +46,9 @@ void msm_reserve(void);
 #define MEMTYPE_FLAGS_1M_ALIGN	0x2
 
 struct memtype_reserve {
-	phys_addr_t start;
-	phys_addr_t size;
-	phys_addr_t limit;
+	unsigned long start;
+	unsigned long size;
+	unsigned long limit;
 	int flags;
 };
 
@@ -55,7 +56,7 @@ struct reserve_info {
 	struct memtype_reserve *memtype_reserve_table;
 	void (*calculate_reserve_sizes)(void);
 	void (*reserve_fixed_area)(unsigned long);
-	int (*paddr_to_memtype)(phys_addr_t);
+	int (*paddr_to_memtype)(unsigned int);
 	unsigned long low_unstable_address;
 	unsigned long max_unstable_size;
 	unsigned long bank_size;
@@ -64,4 +65,6 @@ struct reserve_info {
 };
 
 extern struct reserve_info *reserve_info;
+
+unsigned long __init reserve_memory_for_fmem(unsigned long, unsigned long);
 #endif

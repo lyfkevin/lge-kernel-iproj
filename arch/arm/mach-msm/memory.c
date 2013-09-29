@@ -1,7 +1,7 @@
 /* arch/arm/mach-msm/memory.c
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -38,11 +38,6 @@
 #include <mach/socinfo.h>
 #include <../../mm/mm.h>
 #include <linux/fmem.h>
-
-#if defined(CONFIG_ARCH_MSM7X30)
-unsigned int ebi0_size = 0x20000000;
-EXPORT_SYMBOL(ebi0_size);
-#endif
 
 void *strongly_ordered_page;
 char strongly_ordered_mem[PAGE_SIZE*2-4];
@@ -97,7 +92,6 @@ void clean_and_invalidate_caches(unsigned long vstart,
 {
 	dmac_flush_range((void *)vstart, (void *) (vstart + length));
 	outer_flush_range(pstart, pstart + length);
-
 }
 
 void clean_caches(unsigned long vstart,
@@ -105,7 +99,6 @@ void clean_caches(unsigned long vstart,
 {
 	dmac_clean_range((void *)vstart, (void *) (vstart + length));
 	outer_clean_range(pstart, pstart + length);
-
 }
 
 void invalidate_caches(unsigned long vstart,
@@ -113,6 +106,57 @@ void invalidate_caches(unsigned long vstart,
 {
 	dmac_inv_range((void *)vstart, (void *) (vstart + length));
 	outer_inv_range(pstart, pstart + length);
+}
+
+void *alloc_bootmem_aligned(unsigned long size, unsigned long alignment)
+{
+	void *unused_addr = NULL;
+	unsigned long addr, tmp_size, unused_size;
+
+	/* Allocate maximum size needed, see where it ends up.
+	 * Then free it -- in this path there are no other allocators
+	 * so we can depend on getting the same address back
+	 * when we allocate a smaller piece that is aligned
+	 * at the end (if necessary) and the piece we really want,
+	 * then free the unused first piece.
+	 */
+
+	tmp_size = size + alignment - PAGE_SIZE;
+	addr = (unsigned long)alloc_bootmem(tmp_size);
+	free_bootmem(__pa(addr), tmp_size);
+
+	unused_size = alignment - (addr % alignment);
+	if (unused_size)
+		unused_addr = alloc_bootmem(unused_size);
+
+	addr = (unsigned long)alloc_bootmem(size);
+	if (unused_size)
+		free_bootmem(__pa(unused_addr), unused_size);
+
+	return (void *)addr;
+}
+
+int (*change_memory_power)(u64, u64, int);
+
+int platform_physical_remove_pages(u64 start, u64 size)
+{
+	if (!change_memory_power)
+		return 0;
+	return change_memory_power(start, size, MEMORY_DEEP_POWERDOWN);
+}
+
+int platform_physical_active_pages(u64 start, u64 size)
+{
+	if (!change_memory_power)
+		return 0;
+	return change_memory_power(start, size, MEMORY_ACTIVE);
+}
+
+int platform_physical_low_power_pages(u64 start, u64 size)
+{
+	if (!change_memory_power)
+		return 0;
+	return change_memory_power(start, size, MEMORY_SELF_REFRESH);
 }
 
 char *memtype_name[] = {
@@ -124,29 +168,63 @@ char *memtype_name[] = {
 
 struct reserve_info *reserve_info;
 
-/**
- * calculate_reserve_limits() - calculate reserve limits for all
- * memtypes
- *
- * for each memtype in the reserve_info->memtype_reserve_table, sets
- * the `limit' field to the largest size of any memblock of that
- * memtype.
- */
+static unsigned long stable_size(struct membank *mb,
+	unsigned long unstable_limit)
+{
+	unsigned long upper_limit = mb->start + mb->size;
+
+	if (!unstable_limit)
+		return mb->size;
+
+	/* Check for 32 bit roll-over */
+	if (upper_limit >= mb->start) {
+		/* If we didn't roll over we can safely make the check below */
+		if (upper_limit <= unstable_limit)
+			return mb->size;
+	}
+
+	if (mb->start >= unstable_limit)
+		return 0;
+	return unstable_limit - mb->start;
+}
+
+/* stable size of all memory banks contiguous to and below this one */
+static unsigned long total_stable_size(unsigned long bank)
+{
+	int i;
+	struct membank *mb = &meminfo.bank[bank];
+	int memtype = reserve_info->paddr_to_memtype(mb->start);
+	unsigned long size;
+
+	size = stable_size(mb, reserve_info->low_unstable_address);
+	for (i = bank - 1, mb = &meminfo.bank[bank - 1]; i >= 0; i--, mb--) {
+		if (mb->start + mb->size != (mb + 1)->start)
+			break;
+		if (reserve_info->paddr_to_memtype(mb->start) != memtype)
+			break;
+		size += stable_size(mb, reserve_info->low_unstable_address);
+	}
+	return size;
+}
+
 static void __init calculate_reserve_limits(void)
 {
-	struct memblock_region *mr;
+	int i;
+	struct membank *mb;
 	int memtype;
 	struct memtype_reserve *mt;
+	unsigned long size;
 
-	for_each_memblock(memory, mr) {
-		memtype = reserve_info->paddr_to_memtype(mr->base);
+	for (i = 0, mb = &meminfo.bank[0]; i < meminfo.nr_banks; i++, mb++)  {
+		memtype = reserve_info->paddr_to_memtype(mb->start);
 		if (memtype == MEMTYPE_NONE) {
-			pr_warning("unknown memory type for region at %lx\n",
-				(long unsigned int)mr->base);
+			pr_warning("unknown memory type for bank at %lx\n",
+				(long unsigned int)mb->start);
 			continue;
 		}
 		mt = &reserve_info->memtype_reserve_table[memtype];
-		mt->limit = max_t(unsigned long, mt->limit, mr->size);
+		size = total_stable_size(i);
+		mt->limit = max(mt->limit, size);
 	}
 }
 
@@ -160,8 +238,8 @@ static void __init adjust_reserve_sizes(void)
 		if (mt->flags & MEMTYPE_FLAGS_1M_ALIGN)
 			mt->size = (mt->size + SECTION_SIZE - 1) & SECTION_MASK;
 		if (mt->size > mt->limit) {
-			pr_warning("%pa size for %s too large, setting to %pa\n",
-				&mt->size, memtype_name[i], &mt->limit);
+			pr_warning("%lx size for %s too large, setting to %lx\n",
+				mt->size, memtype_name[i], mt->limit);
 			mt->size = mt->limit;
 		}
 	}
@@ -169,43 +247,70 @@ static void __init adjust_reserve_sizes(void)
 
 static void __init reserve_memory_for_mempools(void)
 {
-	int memtype, memreg_type;
+	int i, memtype, membank_type;
 	struct memtype_reserve *mt;
-	struct memblock_region *mr, *mr_candidate = NULL;
+	struct membank *mb;
 	int ret;
+	unsigned long size;
 
 	mt = &reserve_info->memtype_reserve_table[0];
 	for (memtype = 0; memtype < MEMTYPE_MAX; memtype++, mt++) {
 		if (mt->flags & MEMTYPE_FLAGS_FIXED || !mt->size)
 			continue;
 
-		/* Choose the memory block with the highest physical
+		/* We know we will find memory bank(s) of the proper size
+		 * as we have limited the size of the memory pool for
+		 * each memory type to the largest total size of the memory
+		 * banks which are contiguous and of the correct memory type.
+		 * Choose the memory bank with the highest physical
 		 * address which is large enough, so that we will not
 		 * take memory from the lowest memory bank which the kernel
 		 * is in (and cause boot problems) and so that we might
 		 * be able to steal memory that would otherwise become
-		 * highmem.
+		 * highmem. However, do not use unstable memory.
 		 */
-		for_each_memblock(memory, mr) {
-			memreg_type =
-				reserve_info->paddr_to_memtype(mr->base);
-			if (memtype != memreg_type)
+		for (i = meminfo.nr_banks - 1; i >= 0; i--) {
+			mb = &meminfo.bank[i];
+			membank_type =
+				reserve_info->paddr_to_memtype(mb->start);
+			if (memtype != membank_type)
 				continue;
-			if (mr->size >= mt->size
-				&& (mr_candidate == NULL
-					|| mr->base > mr_candidate->base))
-				mr_candidate = mr;
+			size = total_stable_size(i);
+			if (size >= mt->size) {
+				size = stable_size(mb,
+					reserve_info->low_unstable_address);
+				/* mt->size may be larger than size, all this
+				 * means is that we are carving the memory pool
+				 * out of multiple contiguous memory banks.
+				 */
+				mt->start = mb->start + (size - mt->size);
+				ret = memblock_remove(mt->start, mt->size);
+				BUG_ON(ret);
+				break;
+			}
 		}
-		BUG_ON(mr_candidate == NULL);
-		/* bump mt up against the top of the region */
-		mt->start = mr_candidate->base + mr_candidate->size - mt->size;
-		ret = memblock_reserve(mt->start, mt->size);
-		BUG_ON(ret);
-		ret = memblock_free(mt->start, mt->size);
-		BUG_ON(ret);
-		ret = memblock_remove(mt->start, mt->size);
-		BUG_ON(ret);
 	}
+}
+
+unsigned long __init reserve_memory_for_fmem(unsigned long fmem_size, 
+						unsigned long align)
+{
+	struct membank *mb;
+	int ret;
+	unsigned long fmem_phys;
+
+	if (!fmem_size)
+		return 0;
+
+	mb = &meminfo.bank[meminfo.nr_banks - 1];
+	
+	fmem_phys = mb->start + (mb->size - fmem_size);
+	fmem_phys = ALIGN(fmem_phys-align+1, align);
+	ret = memblock_remove(fmem_phys, fmem_size);
+	BUG_ON(ret);
+
+	pr_info("fmem start %lx size %lx\n", fmem_phys, fmem_size);
+	return fmem_phys;
 }
 
 static void __init initialize_mempools(void)
@@ -225,24 +330,18 @@ static void __init initialize_mempools(void)
 	}
 }
 
-#define  MAX_FIXED_AREA_SIZE 0x11000000
-
 void __init msm_reserve(void)
 {
 	unsigned long msm_fixed_area_size;
 	unsigned long msm_fixed_area_start;
 
 	memory_pool_init();
-	if (reserve_info->calculate_reserve_sizes)
-		reserve_info->calculate_reserve_sizes();
+	reserve_info->calculate_reserve_sizes();
 
 	msm_fixed_area_size = reserve_info->fixed_area_size;
 	msm_fixed_area_start = reserve_info->fixed_area_start;
 	if (msm_fixed_area_size)
-		if (msm_fixed_area_start > reserve_info->low_unstable_address
-			- MAX_FIXED_AREA_SIZE)
-			reserve_info->low_unstable_address =
-			msm_fixed_area_start;
+		reserve_info->low_unstable_address = msm_fixed_area_start;
 
 	calculate_reserve_limits();
 	adjust_reserve_sizes();
@@ -266,7 +365,7 @@ void *allocate_contiguous_ebi(unsigned long size,
 }
 EXPORT_SYMBOL(allocate_contiguous_ebi);
 
-phys_addr_t allocate_contiguous_ebi_nomap(unsigned long size,
+unsigned long allocate_contiguous_ebi_nomap(unsigned long size,
 	unsigned long align)
 {
 	return _allocate_contiguous_memory_nomap(size, get_ebi_memtype(),
