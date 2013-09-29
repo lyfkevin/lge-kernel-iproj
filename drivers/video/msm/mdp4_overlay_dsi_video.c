@@ -360,6 +360,26 @@ static void mdp4_dsi_video_wait4dmap(int cndx)
 		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
 }
 
+
+static void mdp4_dsi_video_wait4dmap_done(int cndx)
+{
+	unsigned long flags;
+	struct vsycn_ctrl *vctrl;
+
+	if (cndx >= MAX_CONTROLLER) {
+		pr_err("%s: out or range: cndx=%d\n", __func__, cndx);
+		return;
+	}
+	vctrl = &vsync_ctrl_db[cndx];
+
+	spin_lock_irqsave(&vctrl->spin_lock, flags);
+	INIT_COMPLETION(vctrl->dmap_comp);
+	vsync_irq_enable(INTR_DMA_P_DONE, MDP_DMAP_TERM);
+	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
+	mdp4_dsi_video_wait4dmap(cndx);
+}
+
+
 static void mdp4_dsi_video_wait4ov(int cndx)
 {
 	struct vsycn_ctrl *vctrl;

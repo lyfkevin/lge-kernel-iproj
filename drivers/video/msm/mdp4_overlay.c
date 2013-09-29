@@ -937,6 +937,9 @@ void mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 #ifndef CONFIG_LGE_BROADCAST_TDMB
 		mask = 0xFFFCF1FF;
 #else
+		/* 위의 조건은 사용하는 pipe가 바뀔 때라서 dmb 진입/종료 시에만 탄다.                         */
+		/* 따라서 실제 튜닝할 때는 else를 타므로 OVERLAY_TYPE_RGB가 아닐 때 다시 말해 VIDEO TYPE일 때 */
+		/* mdp_csc_convert에 설정해둔 값을 쓸 수 있도록 코드를 로컬로 추가해서 쓴다.                  */
 		if (ptype != OVERLAY_TYPE_RGB) {
 			addr = ((uint32_t)vg_base) + 0x4000;
 			mdp4_csc_write(&(mdp_csc_convert[1]), addr);
@@ -2651,11 +2654,11 @@ static int mdp4_calc_pipe_mdp_clk(struct msm_fb_data_type *mfd,
 	/*
 	 * If the calculated mdp clk is less than panel pixel clk,
 	 * most likely due to upscaling, mdp clk rate will be set to
-	 * greater than pclk. Now the driver uses 2 as the
+	 * greater than pclk. Now the driver uses 1.15 as the
 	 * factor. Ideally this factor is passed from board file.
 	 */
 	if (rst < pclk) {
-		rst = ((pclk >> shift) * 2) << shift;
+		rst = ((pclk >> shift) * 23 / 20) << shift;
 		pr_debug("%s calculated mdp clk is less than pclk.\n",
 			__func__);
 	}
