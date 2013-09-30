@@ -8,10 +8,9 @@ msm_kgsl_core-y = \
 	kgsl_pwrscale.o \
 	kgsl_mmu.o \
 	kgsl_gpummu.o \
-	kgsl_snapshot.o \
-	kgsl_events.o
+	kgsl_iommu.o \
+	kgsl_snapshot.o
 
-msm_mgsl_core-$(CONFIG_MSM_IOMMU) += kgsl_iommu.o
 msm_kgsl_core-$(CONFIG_DEBUG_FS) += kgsl_debugfs.o
 msm_kgsl_core-$(CONFIG_MSM_KGSL_CFF_DUMP) += kgsl_cffdump.o
 msm_kgsl_core-$(CONFIG_MSM_KGSL_DRM) += kgsl_drm.o
@@ -37,7 +36,6 @@ msm_adreno-$(CONFIG_DEBUG_FS) += adreno_debugfs.o
 
 msm_z180-y += \
 	z180.o \
-	z180_postmortem.o \
 	z180_trace.o
 
 msm_kgsl_core-objs = $(msm_kgsl_core-y)
