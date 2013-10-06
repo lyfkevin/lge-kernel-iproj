@@ -88,7 +88,13 @@ static int __init mipi_video_lgit_wvga_pt_init(void)
 	pinfo.lcdc.hsync_skew = 0;
 	pinfo.bl_max = 0x7F;
 	pinfo.bl_min = 0;
+#ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
+	pinfo.fb_num = 3;
+#else
 	pinfo.fb_num = 2;
+#endif
+	pinfo.lcd.vsync_enable = TRUE;
+	pinfo.lcd.hw_vsync_mode = TRUE;
 
 	pinfo.mipi.mode = DSI_VIDEO_MODE;
 	pinfo.mipi.pulse_mode_hsa_he = TRUE;
