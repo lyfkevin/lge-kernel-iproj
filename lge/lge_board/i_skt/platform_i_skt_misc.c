@@ -115,7 +115,7 @@ static struct lge_isa1200_platform_data lge_isa1200_platform_data = {
 
 	.max_timeout = 30000,
 
-	.default_vib_strength = 105,
+	.default_vib_strength = 100,
 
 	.init_seq = &isa1200_init,
 };
